@@ -31,9 +31,7 @@ func main() {
 		message := buf[:size]
 		headers := ParseMessageHeaders(message[:12])
 
-		response := make([]byte, 0, 12)
-		headers.WriteMessageHeaders(response)
-
+		response := headers.Bytes()
 		_, err = udpConn.WriteToUDP(response, source)
 		if err != nil {
 			fmt.Println("Failed to send response:", err)

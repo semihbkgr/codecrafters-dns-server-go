@@ -1,6 +1,8 @@
 package main
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+)
 
 /*
                                    1  1  1  1  1  1
@@ -85,11 +87,13 @@ func ParseMessageHeaders(b []byte) MessageHeaders {
 	}
 }
 
-func (headers MessageHeaders) WriteMessageHeaders(b []byte) {
-	binary.BigEndian.AppendUint16(b, headers.ID)
-	binary.BigEndian.AppendUint16(b, headers.CODE)
-	binary.BigEndian.AppendUint16(b, headers.QDCOUNT)
-	binary.BigEndian.AppendUint16(b, headers.ANCOUNT)
-	binary.BigEndian.AppendUint16(b, headers.NSCOUNT)
-	binary.BigEndian.AppendUint16(b, headers.ARCOUNT)
+func (headers MessageHeaders) Bytes() []byte {
+	b := make([]byte, 12)
+	binary.BigEndian.PutUint16(b[0:2], headers.ID)
+	binary.BigEndian.PutUint16(b[2:4], headers.CODE)
+	binary.BigEndian.PutUint16(b[4:6], headers.QDCOUNT)
+	binary.BigEndian.PutUint16(b[6:8], headers.ANCOUNT)
+	binary.BigEndian.PutUint16(b[8:10], headers.NSCOUNT)
+	binary.BigEndian.PutUint16(b[10:12], headers.ARCOUNT)
+	return b
 }
