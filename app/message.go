@@ -48,6 +48,10 @@ func (h *MessageHeaders) QR() bool {
 	return (h.CODE >> 15 & 0x01) == 1
 }
 
+func (h *MessageHeaders) SetQR(b bool) {
+	h.CODE |= 1 << 15
+}
+
 func (h *MessageHeaders) OPCODE() uint8 {
 	return uint8(h.CODE >> 11 & 0x0f)
 }

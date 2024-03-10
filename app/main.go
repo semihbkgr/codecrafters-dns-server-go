@@ -30,8 +30,14 @@ func main() {
 
 		message := buf[:size]
 		headers := ParseMessageHeaders(message[:12])
+		_ = headers
 
-		response := headers.Bytes()
+		responseHeaders := MessageHeaders{
+			ID: 1234,
+		}
+		responseHeaders.SetQR(true)
+
+		response := responseHeaders.Bytes()
 		_, err = udpConn.WriteToUDP(response, source)
 		if err != nil {
 			fmt.Println("Failed to send response:", err)
