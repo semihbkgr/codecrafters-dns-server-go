@@ -28,11 +28,11 @@ func main() {
 			break
 		}
 
-		receivedData := string(buf[:size])
-		fmt.Printf("Received %d bytes from %s: %s\n", size, source, receivedData)
+		message := buf[:size]
+		headers := ParseMessageHeaders(message[:12])
 
-		// Create an empty response
-		response := []byte{}
+		response := make([]byte, 0, 12)
+		headers.WriteMessageHeaders(response)
 
 		_, err = udpConn.WriteToUDP(response, source)
 		if err != nil {
