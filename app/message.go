@@ -1,8 +1,51 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
+	"fmt"
+	"strings"
 )
+
+type Message struct {
+	Headers   *MessageHeaders
+	Questions []*MessageQuestion
+}
+
+func ParseMessage(b []byte) *Message {
+	headers := ParseMessageHeaders(b[0:12])
+
+	offset := 12
+	questions := make([]*MessageQuestion, 0, headers.QDCOUNT)
+	for i := uint16(0); i < headers.QDCOUNT; i++ {
+		question, questionOffset := ParseMessageQuestion(b[offset:])
+		questions = append(questions, question)
+		offset += questionOffset
+	}
+
+	return &Message{
+		Headers:   headers,
+		Questions: questions,
+	}
+}
+
+func (m *Message) Bytes() []byte {
+	buf := bytes.NewBuffer(nil)
+	buf.Write(m.Headers.Bytes())
+	for _, question := range m.Questions {
+		buf.Write(question.Bytes())
+	}
+	return buf.Bytes()
+}
+
+func (m *Message) String() string {
+	b := strings.Builder{}
+	b.WriteString(fmt.Sprintf("%+v\n", *m.Headers))
+	for _, question := range m.Questions {
+		b.WriteString(fmt.Sprintf("%+v\n", *question))
+	}
+	return b.String()
+}
 
 /*
                                    1  1  1  1  1  1
@@ -80,8 +123,8 @@ func (h *MessageHeaders) RCODE() uint8 {
 	return uint8(h.CODE >> 0 & 0x0F)
 }
 
-func ParseMessageHeaders(b []byte) MessageHeaders {
-	return MessageHeaders{
+func ParseMessageHeaders(b []byte) *MessageHeaders {
+	return &MessageHeaders{
 		ID:      binary.BigEndian.Uint16(b[0:2]),
 		CODE:    binary.BigEndian.Uint16(b[2:4]),
 		QDCOUNT: binary.BigEndian.Uint16(b[4:6]),
@@ -91,7 +134,7 @@ func ParseMessageHeaders(b []byte) MessageHeaders {
 	}
 }
 
-func (headers MessageHeaders) Bytes() []byte {
+func (headers *MessageHeaders) Bytes() []byte {
 	b := make([]byte, 12)
 	binary.BigEndian.PutUint16(b[0:2], headers.ID)
 	binary.BigEndian.PutUint16(b[2:4], headers.CODE)
@@ -101,3 +144,80 @@ func (headers MessageHeaders) Bytes() []byte {
 	binary.BigEndian.PutUint16(b[10:12], headers.ARCOUNT)
 	return b
 }
+
+type MessageQuestion struct {
+	QNAME  QuestionName
+	QTYPE  QuestionType
+	QCLASS QuestionClass
+}
+
+func ParseMessageQuestion(b []byte) (*MessageQuestion, int) {
+	qname, offset := ParseQuestionName(b)
+	qtype := QuestionType(binary.BigEndian.Uint16(b[offset : offset+2]))
+	offset += 2
+	qclass := QuestionType(binary.BigEndian.Uint16(b[offset : offset+2]))
+	offset += 2
+	return &MessageQuestion{
+		QNAME:  qname,
+		QTYPE:  qtype,
+		QCLASS: QuestionClass(qclass),
+	}, offset
+}
+
+func (question *MessageQuestion) Bytes() []byte {
+	b := question.QNAME.Bytes()
+	b = binary.BigEndian.AppendUint16(b, uint16(question.QTYPE))
+	b = binary.BigEndian.AppendUint16(b, uint16(question.QCLASS))
+	return b
+}
+
+type QuestionName []string
+
+func ParseQuestionName(b []byte) (QuestionName, int) {
+	offset := 0
+	name := make(QuestionName, 0)
+	for l := b[offset]; l > 0; l = b[offset] {
+		name = append(name, string(b[offset+1:offset+int(l)]))
+		offset += int(l) + 1
+	}
+	return name, offset
+}
+
+func (name QuestionName) Bytes() []byte {
+	b := make([]byte, 0)
+	for _, label := range name {
+		b = append(b, byte(len(label)))
+		b = append(b, []byte(label)...)
+	}
+	return append(b, 0)
+}
+
+type QuestionType uint16
+
+const (
+	A QuestionType = 1 + iota
+	NS
+	MD
+	MF
+	CNAME
+	SOA
+	MB
+	MG
+	MR
+	NULL
+	WKS
+	PTR
+	HINFO
+	MINFO
+	MX
+	TXT
+)
+
+type QuestionClass uint16
+
+const (
+	IN QuestionClass = 1 + iota
+	CS
+	CH
+	HS
+)

@@ -28,16 +28,30 @@ func main() {
 			break
 		}
 
-		message := buf[:size]
-		headers := ParseMessageHeaders(message[:12])
-		_ = headers
+		message := ParseMessage(buf[:size])
+		fmt.Printf("request\n%v\n", message)
 
-		responseHeaders := MessageHeaders{
-			ID: 1234,
+		responseHeaders := &MessageHeaders{
+			ID:      1234,
+			QDCOUNT: 1,
 		}
 		responseHeaders.SetQR(true)
+		responseQuestions := []*MessageQuestion{
+			{
+				QNAME:  []string{"codecrafters", "io"},
+				QTYPE:  A,
+				QCLASS: IN,
+			},
+		}
+		responseMessage := &Message{
+			Headers:   responseHeaders,
+			Questions: responseQuestions,
+		}
 
-		response := responseHeaders.Bytes()
+		fmt.Printf("response\n%v\n", responseMessage)
+
+		response := responseMessage.Bytes()
+
 		_, err = udpConn.WriteToUDP(response, source)
 		if err != nil {
 			fmt.Println("Failed to send response:", err)
