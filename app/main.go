@@ -32,9 +32,9 @@ func main() {
 		fmt.Printf("request\n%v\n", message)
 
 		responseHeaders := &MessageHeaders{
-			ID:      1234,
-			QDCOUNT: 1,
+			ID: 1234,
 		}
+
 		responseHeaders.SetQR(true)
 		responseQuestions := []*MessageQuestion{
 			{
@@ -55,6 +55,8 @@ func main() {
 			Questions: responseQuestions,
 			Answers:   responseAnswers,
 		}
+		responseMessage.Headers.QDCOUNT = uint16(len(responseMessage.Questions))
+		responseMessage.Headers.ANCOUNT = uint16(len(responseMessage.Answers))
 
 		fmt.Printf("response\n%v\n", responseMessage)
 
