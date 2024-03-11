@@ -8,13 +8,13 @@ import (
 )
 
 type Message struct {
-	Headers   *MessageHeaders
+	Headers   *Headers
 	Questions []*MessageQuestion
 	Answers   []*MessageResourceRecord
 }
 
 func ParseMessage(b []byte) *Message {
-	headers := ParseMessageHeaders(b[0:12])
+	headers := ParseHeaders(b[0:12])
 
 	offset := 12
 	questions := make([]*MessageQuestion, 0, headers.QDCOUNT)
@@ -72,7 +72,7 @@ func (m *Message) String() string {
    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
 */
 
-type MessageHeaders struct {
+type Headers struct {
 	//Packet Identifier
 	ID uint16
 	//Query/Response Indicator
@@ -94,44 +94,78 @@ type MessageHeaders struct {
 	ARCOUNT uint16
 }
 
-func (h *MessageHeaders) QR() bool {
+func NewHeaders(id uint16) *Headers {
+	return &Headers{
+		ID: id,
+	}
+}
+
+func (h *Headers) QR() bool {
 	return (h.CODE >> 15 & 0x01) == 1
 }
 
-func (h *MessageHeaders) SetQR(b bool) {
-	h.CODE |= 1 << 15
+func (h *Headers) SetQR(b bool) {
+	h.CODE |= 0x01 << 15
 }
 
-func (h *MessageHeaders) OPCODE() uint8 {
+func (h *Headers) OPCODE() uint8 {
 	return uint8(h.CODE >> 11 & 0x0f)
 }
 
-func (h *MessageHeaders) AA() bool {
+func (h *Headers) SetOPCODE(opcode uint8) {
+	h.CODE |= 0x0f << 11
+}
+
+func (h *Headers) AA() bool {
 	return (h.CODE >> 10 & 0x01) == 1
 }
 
-func (h *MessageHeaders) TC() bool {
+func (h *Headers) SetAA(b bool) {
+	h.CODE |= 0x01 << 10
+}
+
+func (h *Headers) TC() bool {
 	return (h.CODE >> 9 & 0x01) == 1
 }
 
-func (h *MessageHeaders) RD() bool {
+func (h *Headers) SetTC(b bool) {
+	h.CODE |= 0x01 << 9
+}
+
+func (h *Headers) RD() bool {
 	return (h.CODE >> 8 & 0x01) == 1
 }
 
-func (h *MessageHeaders) RA() bool {
+func (h *Headers) SetRD(b bool) {
+	h.CODE |= 0x01 << 8
+}
+
+func (h *Headers) RA() bool {
 	return (h.CODE >> 7 & 0x01) == 1
 }
 
-func (h *MessageHeaders) Z() uint8 {
+func (h *Headers) SetRA(b bool) {
+	h.CODE |= 0x01 << 7
+}
+
+func (h *Headers) Z() uint8 {
 	return uint8(h.CODE >> 4 & 0x07)
 }
 
-func (h *MessageHeaders) RCODE() uint8 {
+func (h *Headers) SetZ(z uint8) {
+	h.CODE |= 0x07 << 4
+}
+
+func (h *Headers) RCODE() uint8 {
 	return uint8(h.CODE >> 0 & 0x0F)
 }
 
-func ParseMessageHeaders(b []byte) *MessageHeaders {
-	return &MessageHeaders{
+func (h *Headers) SetRCODE(rcode uint8) {
+	h.CODE |= 0x0F << 0
+}
+
+func ParseHeaders(b []byte) *Headers {
+	return &Headers{
 		ID:      binary.BigEndian.Uint16(b[0:2]),
 		CODE:    binary.BigEndian.Uint16(b[2:4]),
 		QDCOUNT: binary.BigEndian.Uint16(b[4:6]),
@@ -141,14 +175,14 @@ func ParseMessageHeaders(b []byte) *MessageHeaders {
 	}
 }
 
-func (headers *MessageHeaders) Bytes() []byte {
+func (h *Headers) Bytes() []byte {
 	b := make([]byte, 12)
-	binary.BigEndian.PutUint16(b[0:2], headers.ID)
-	binary.BigEndian.PutUint16(b[2:4], headers.CODE)
-	binary.BigEndian.PutUint16(b[4:6], headers.QDCOUNT)
-	binary.BigEndian.PutUint16(b[6:8], headers.ANCOUNT)
-	binary.BigEndian.PutUint16(b[8:10], headers.NSCOUNT)
-	binary.BigEndian.PutUint16(b[10:12], headers.ARCOUNT)
+	binary.BigEndian.PutUint16(b[0:2], h.ID)
+	binary.BigEndian.PutUint16(b[2:4], h.CODE)
+	binary.BigEndian.PutUint16(b[4:6], h.QDCOUNT)
+	binary.BigEndian.PutUint16(b[6:8], h.ANCOUNT)
+	binary.BigEndian.PutUint16(b[8:10], h.NSCOUNT)
+	binary.BigEndian.PutUint16(b[10:12], h.ARCOUNT)
 	return b
 }
 

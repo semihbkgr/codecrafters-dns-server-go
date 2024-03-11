@@ -31,11 +31,17 @@ func main() {
 		message := ParseMessage(buf[:size])
 		fmt.Printf("request\n%v\n", message)
 
-		responseHeaders := &MessageHeaders{
-			ID: 1234,
+		// response
+		headers := NewHeaders(message.Headers.ID)
+		headers.SetQR(true)
+		headers.SetOPCODE(message.Headers.OPCODE())
+		headers.SetRD(message.Headers.RD())
+		if headers.OPCODE() == 0 {
+			headers.SetRCODE(0) // no error
+		} else {
+			headers.SetRCODE(4) // not implemented
 		}
 
-		responseHeaders.SetQR(true)
 		responseQuestions := []*MessageQuestion{
 			{
 				QNAME:  []string{"codecrafters", "io"},
@@ -51,7 +57,7 @@ func main() {
 		responseAnswers := []*MessageResourceRecord{resourceRecord}
 
 		responseMessage := &Message{
-			Headers:   responseHeaders,
+			Headers:   headers,
 			Questions: responseQuestions,
 			Answers:   responseAnswers,
 		}
