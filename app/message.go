@@ -101,67 +101,85 @@ func NewHeaders(id uint16) *Headers {
 }
 
 func (h *Headers) QR() bool {
-	return (h.CODE >> 15 & 0x01) == 1
+	return (h.CODE >> 15 & 0b1) == 1
 }
 
 func (h *Headers) SetQR(b bool) {
-	h.CODE |= 0x01 << 15
+	h.CODE &^= 0b1 << 15
+	if b {
+		h.CODE |= 0b1 << 15
+	}
 }
 
 func (h *Headers) OPCODE() uint8 {
-	return uint8(h.CODE >> 11 & 0x0f)
+	return uint8(h.CODE >> 11 & 0b1111)
 }
 
 func (h *Headers) SetOPCODE(opcode uint8) {
-	h.CODE |= 0x0f << 11
+	h.CODE &^= uint16(0b1111) << 11
+	h.CODE |= uint16(opcode) << 11
 }
 
 func (h *Headers) AA() bool {
-	return (h.CODE >> 10 & 0x01) == 1
+	return (h.CODE >> 10 & 0b1) == 1
 }
 
 func (h *Headers) SetAA(b bool) {
-	h.CODE |= 0x01 << 10
+	h.CODE &^= 0b1 << 10
+	if b {
+		h.CODE |= 0b1 << 10
+	}
 }
 
 func (h *Headers) TC() bool {
-	return (h.CODE >> 9 & 0x01) == 1
+	return (h.CODE >> 9 & 0b1) == 1
 }
 
 func (h *Headers) SetTC(b bool) {
-	h.CODE |= 0x01 << 9
+	h.CODE &^= 0b1 << 9
+	if b {
+		h.CODE |= 0b1 << 9
+	}
 }
 
 func (h *Headers) RD() bool {
-	return (h.CODE >> 8 & 0x01) == 1
+	return (h.CODE >> 8 & 0b1) == 1
 }
 
 func (h *Headers) SetRD(b bool) {
-	h.CODE |= 0x01 << 8
+	h.CODE &^= 0b1 << 8
+	if b {
+		h.CODE |= 0b1 << 8
+	}
 }
 
 func (h *Headers) RA() bool {
-	return (h.CODE >> 7 & 0x01) == 1
+	return (h.CODE >> 7 & 0b1) == 1
 }
 
 func (h *Headers) SetRA(b bool) {
-	h.CODE |= 0x01 << 7
+	h.CODE &^= 0b1 << 7
+	if b {
+		h.CODE |= 0b1 << 7
+	}
 }
 
 func (h *Headers) Z() uint8 {
-	return uint8(h.CODE >> 4 & 0x07)
+	return uint8(h.CODE >> 4 & 0b111)
 }
 
 func (h *Headers) SetZ(z uint8) {
-	h.CODE |= 0x07 << 4
+	h.CODE &^= uint16(0b111) << 4
+	h.CODE |= uint16(z) << 4
 }
 
 func (h *Headers) RCODE() uint8 {
-	return uint8(h.CODE >> 0 & 0x0F)
+	return uint8(h.CODE >> 0 & 0b1111)
 }
 
 func (h *Headers) SetRCODE(rcode uint8) {
-	h.CODE |= 0x0F << 0
+	h.CODE &^= uint16(0b1111) << 0
+	h.CODE |= uint16(rcode) << 0
 }
 
 func ParseHeaders(b []byte) *Headers {
