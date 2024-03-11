@@ -10,6 +10,7 @@ import (
 type Message struct {
 	Headers   *MessageHeaders
 	Questions []*MessageQuestion
+	Answers   []*MessageResourceRecord
 }
 
 func ParseMessage(b []byte) *Message {
@@ -35,6 +36,9 @@ func (m *Message) Bytes() []byte {
 	for _, question := range m.Questions {
 		buf.Write(question.Bytes())
 	}
+	for _, answer := range m.Answers {
+		buf.Write(answer.Bytes())
+	}
 	return buf.Bytes()
 }
 
@@ -43,6 +47,9 @@ func (m *Message) String() string {
 	b.WriteString(fmt.Sprintf("%+v\n", *m.Headers))
 	for _, question := range m.Questions {
 		b.WriteString(fmt.Sprintf("%+v\n", *question))
+	}
+	for _, rr := range m.Answers {
+		b.WriteString(fmt.Sprintf("%+v\n", *rr))
 	}
 	return b.String()
 }
@@ -146,21 +153,21 @@ func (headers *MessageHeaders) Bytes() []byte {
 }
 
 type MessageQuestion struct {
-	QNAME  QuestionName
-	QTYPE  QuestionType
-	QCLASS QuestionClass
+	QNAME  Labels
+	QTYPE  Type
+	QCLASS Class
 }
 
 func ParseMessageQuestion(b []byte) (*MessageQuestion, int) {
-	qname, offset := ParseQuestionName(b)
-	qtype := QuestionType(binary.BigEndian.Uint16(b[offset : offset+2]))
+	qname, offset := ParseLabels(b)
+	qtype := Type(binary.BigEndian.Uint16(b[offset : offset+2]))
 	offset += 2
-	qclass := QuestionType(binary.BigEndian.Uint16(b[offset : offset+2]))
+	qclass := Class(binary.BigEndian.Uint16(b[offset : offset+2]))
 	offset += 2
 	return &MessageQuestion{
 		QNAME:  qname,
 		QTYPE:  qtype,
-		QCLASS: QuestionClass(qclass),
+		QCLASS: qclass,
 	}, offset
 }
 
@@ -171,11 +178,11 @@ func (question *MessageQuestion) Bytes() []byte {
 	return b
 }
 
-type QuestionName []string
+type Labels []string
 
-func ParseQuestionName(b []byte) (QuestionName, int) {
+func ParseLabels(b []byte) (Labels, int) {
 	offset := 0
-	name := make(QuestionName, 0)
+	name := make(Labels, 0)
 	for l := b[offset]; l > 0; l = b[offset] {
 		name = append(name, string(b[offset+1:offset+int(l)]))
 		offset += int(l) + 1
@@ -183,19 +190,19 @@ func ParseQuestionName(b []byte) (QuestionName, int) {
 	return name, offset
 }
 
-func (name QuestionName) Bytes() []byte {
+func (labels Labels) Bytes() []byte {
 	b := make([]byte, 0)
-	for _, label := range name {
+	for _, label := range labels {
 		b = append(b, byte(len(label)))
 		b = append(b, []byte(label)...)
 	}
 	return append(b, 0)
 }
 
-type QuestionType uint16
+type Type uint16
 
 const (
-	A QuestionType = 1 + iota
+	A Type = 1 + iota
 	NS
 	MD
 	MF
@@ -213,11 +220,44 @@ const (
 	TXT
 )
 
-type QuestionClass uint16
+type Class uint16
 
 const (
-	IN QuestionClass = 1 + iota
+	IN Class = 1 + iota
 	CS
 	CH
 	HS
 )
+
+type MessageResourceRecord struct {
+	NAME     Labels
+	TYPE     Type
+	CLASS    Class
+	TTL      uint32
+	RDLENGTH uint16
+	RDATA    []byte
+}
+
+func NewMessageResourceRecord(question *MessageQuestion) *MessageResourceRecord {
+	return &MessageResourceRecord{
+		NAME:  question.QNAME,
+		TYPE:  question.QTYPE,
+		CLASS: question.QCLASS,
+	}
+}
+
+func (rr *MessageResourceRecord) SetData(b []byte) {
+	rr.RDLENGTH = uint16(len(b))
+	rr.RDATA = b
+}
+
+func (rr *MessageResourceRecord) Bytes() []byte {
+	b := rr.NAME.Bytes()
+	b = binary.BigEndian.AppendUint16(b, uint16(rr.TYPE))
+	b = binary.BigEndian.AppendUint16(b, uint16(rr.CLASS))
+	b = binary.BigEndian.AppendUint32(b, rr.TTL)
+	b = binary.BigEndian.AppendUint16(b, rr.RDLENGTH)
+	buf := bytes.NewBuffer(b)
+	binary.Write(buf, binary.BigEndian, rr.RDATA)
+	return buf.Bytes()
+}

@@ -43,9 +43,17 @@ func main() {
 				QCLASS: IN,
 			},
 		}
+
+		resourceRecord := NewMessageResourceRecord(responseQuestions[0])
+		resourceRecord.TTL = 60
+		resourceRecord.SetData([]byte{8, 8, 8, 8})
+
+		responseAnswers := []*MessageResourceRecord{resourceRecord}
+
 		responseMessage := &Message{
 			Headers:   responseHeaders,
 			Questions: responseQuestions,
+			Answers:   responseAnswers,
 		}
 
 		fmt.Printf("response\n%v\n", responseMessage)
