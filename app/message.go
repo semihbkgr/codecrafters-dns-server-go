@@ -9,17 +9,17 @@ import (
 
 type Message struct {
 	Headers   *Headers
-	Questions []*MessageQuestion
-	Answers   []*MessageResourceRecord
+	Questions []*Question
+	Answers   []*ResourceRecord
 }
 
 func ParseMessage(b []byte) *Message {
 	headers := ParseHeaders(b[0:12])
 
 	offset := 12
-	questions := make([]*MessageQuestion, 0, headers.QDCOUNT)
+	questions := make([]*Question, 0, headers.QDCOUNT)
 	for i := uint16(0); i < headers.QDCOUNT; i++ {
-		question, questionOffset := ParseMessageQuestion(b[offset:])
+		question, questionOffset := ParseQuestion(b[offset:])
 		questions = append(questions, question)
 		offset += questionOffset
 	}
@@ -204,26 +204,26 @@ func (h *Headers) Bytes() []byte {
 	return b
 }
 
-type MessageQuestion struct {
+type Question struct {
 	QNAME  Labels
 	QTYPE  Type
 	QCLASS Class
 }
 
-func ParseMessageQuestion(b []byte) (*MessageQuestion, int) {
+func ParseQuestion(b []byte) (*Question, int) {
 	qname, offset := ParseLabels(b)
 	qtype := Type(binary.BigEndian.Uint16(b[offset : offset+2]))
 	offset += 2
 	qclass := Class(binary.BigEndian.Uint16(b[offset : offset+2]))
 	offset += 2
-	return &MessageQuestion{
+	return &Question{
 		QNAME:  qname,
 		QTYPE:  qtype,
 		QCLASS: qclass,
 	}, offset
 }
 
-func (question *MessageQuestion) Bytes() []byte {
+func (question *Question) Bytes() []byte {
 	b := question.QNAME.Bytes()
 	b = binary.BigEndian.AppendUint16(b, uint16(question.QTYPE))
 	b = binary.BigEndian.AppendUint16(b, uint16(question.QCLASS))
@@ -281,7 +281,7 @@ const (
 	HS
 )
 
-type MessageResourceRecord struct {
+type ResourceRecord struct {
 	NAME     Labels
 	TYPE     Type
 	CLASS    Class
@@ -290,20 +290,20 @@ type MessageResourceRecord struct {
 	RDATA    []byte
 }
 
-func NewMessageResourceRecord(question *MessageQuestion) *MessageResourceRecord {
-	return &MessageResourceRecord{
+func NewResourceRecord(question *Question) *ResourceRecord {
+	return &ResourceRecord{
 		NAME:  question.QNAME,
 		TYPE:  question.QTYPE,
 		CLASS: question.QCLASS,
 	}
 }
 
-func (rr *MessageResourceRecord) SetData(b []byte) {
+func (rr *ResourceRecord) SetData(b []byte) {
 	rr.RDLENGTH = uint16(len(b))
 	rr.RDATA = b
 }
 
-func (rr *MessageResourceRecord) Bytes() []byte {
+func (rr *ResourceRecord) Bytes() []byte {
 	b := rr.NAME.Bytes()
 	b = binary.BigEndian.AppendUint16(b, uint16(rr.TYPE))
 	b = binary.BigEndian.AppendUint16(b, uint16(rr.CLASS))

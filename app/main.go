@@ -42,24 +42,16 @@ func main() {
 			headers.SetRCODE(4) // not implemented
 		}
 
-		responseQuestions := []*MessageQuestion{
-			{
-				QNAME:  []string{"codecrafters", "io"},
-				QTYPE:  A,
-				QCLASS: IN,
-			},
-		}
+		question := message.Questions[0]
 
-		resourceRecord := NewMessageResourceRecord(responseQuestions[0])
+		resourceRecord := NewResourceRecord(question)
 		resourceRecord.TTL = 60
 		resourceRecord.SetData([]byte{8, 8, 8, 8})
 
-		responseAnswers := []*MessageResourceRecord{resourceRecord}
-
 		responseMessage := &Message{
 			Headers:   headers,
-			Questions: responseQuestions,
-			Answers:   responseAnswers,
+			Questions: []*Question{question},
+			Answers:   []*ResourceRecord{resourceRecord},
 		}
 		responseMessage.Headers.QDCOUNT = uint16(len(responseMessage.Questions))
 		responseMessage.Headers.ANCOUNT = uint16(len(responseMessage.Answers))
