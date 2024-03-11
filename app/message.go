@@ -236,10 +236,10 @@ func ParseLabels(b []byte) (Labels, int) {
 	offset := 0
 	name := make(Labels, 0)
 	for l := b[offset]; l > 0; l = b[offset] {
-		name = append(name, string(b[offset+1:offset+int(l)]))
+		name = append(name, string(b[offset+1:offset+1+int(l)]))
 		offset += int(l) + 1
 	}
-	return name, offset
+	return name, offset + 1
 }
 
 func (labels Labels) Bytes() []byte {
