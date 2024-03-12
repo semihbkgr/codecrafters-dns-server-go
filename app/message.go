@@ -24,9 +24,17 @@ func ParseMessage(b []byte) *Message {
 		questions = append(questions, question)
 	}
 
+	answers := make([]*ResourceRecord, 0, headers.ANCOUNT)
+	for i := uint16(0); i < headers.ANCOUNT; i++ {
+		var resourceRecord *ResourceRecord
+		resourceRecord, offset = ParseResourceRecord(b, offset)
+		answers = append(answers, resourceRecord)
+	}
+
 	return &Message{
 		Headers:   headers,
 		Questions: questions,
+		Answers:   answers,
 	}
 }
 
@@ -301,6 +309,29 @@ func NewResourceRecord(question *Question) *ResourceRecord {
 		TYPE:  question.QTYPE,
 		CLASS: question.QCLASS,
 	}
+}
+
+func ParseResourceRecord(b []byte, offset int) (*ResourceRecord, int) {
+	name, offset := ParseLabels(b, offset)
+	typ := Type(binary.BigEndian.Uint16(b[offset : offset+2]))
+	offset += 2
+	class := Class(binary.BigEndian.Uint16(b[offset : offset+2]))
+	offset += 2
+	ttl := binary.BigEndian.Uint32(b[offset : offset+4])
+	offset += 4
+	rdlength := binary.BigEndian.Uint16(b[offset : offset+2])
+	offset += 2
+	buf := bytes.NewBuffer(nil)
+	binary.Write(buf, binary.BigEndian, b[offset:offset+int(rdlength)])
+	offset += int(rdlength)
+	return &ResourceRecord{
+		NAME:     name,
+		TYPE:     typ,
+		CLASS:    class,
+		TTL:      ttl,
+		RDLENGTH: rdlength,
+		RDATA:    buf.Bytes(),
+	}, offset
 }
 
 func (rr *ResourceRecord) SetData(b []byte) {
