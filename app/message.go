@@ -19,7 +19,7 @@ func ParseMessage(b []byte) *Message {
 	offset := 12
 	questions := make([]*Question, 0, headers.QDCOUNT)
 	for i := uint16(0); i < headers.QDCOUNT; i++ {
-		question, questionOffset := ParseQuestion(b[offset:])
+		question, questionOffset := ParseQuestion(b, offset)
 		questions = append(questions, question)
 		offset += questionOffset
 	}
@@ -210,8 +210,8 @@ type Question struct {
 	QCLASS Class
 }
 
-func ParseQuestion(b []byte) (*Question, int) {
-	qname, offset := ParseLabels(b)
+func ParseQuestion(b []byte, offset int) (*Question, int) {
+	qname, offset := ParseLabels(b, offset)
 	qtype := Type(binary.BigEndian.Uint16(b[offset : offset+2]))
 	offset += 2
 	qclass := Class(binary.BigEndian.Uint16(b[offset : offset+2]))
@@ -232,14 +232,19 @@ func (question *Question) Bytes() []byte {
 
 type Labels []string
 
-func ParseLabels(b []byte) (Labels, int) {
-	offset := 0
-	name := make(Labels, 0)
+func ParseLabels(b []byte, offset int) (Labels, int) {
+	labels := make(Labels, 0)
 	for l := b[offset]; l > 0; l = b[offset] {
-		name = append(name, string(b[offset+1:offset+1+int(l)]))
-		offset += int(l) + 1
+		if l&0xC0 == 0xC0 { //pointer label
+			pointerOffset := int(binary.BigEndian.Uint16([]byte{l, b[offset+1]})) & 0x3FFF
+			referencedLabels, _ := ParseLabels(b, pointerOffset)
+			return append(labels, referencedLabels...), offset + 2
+		} else {
+			labels = append(labels, string(b[offset+1:offset+1+int(l)]))
+			offset += int(l) + 1
+		}
 	}
-	return name, offset + 1
+	return labels, offset + 1
 }
 
 func (labels Labels) Bytes() []byte {
