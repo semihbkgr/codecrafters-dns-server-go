@@ -1,11 +1,15 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net"
 )
 
 func main() {
+	resolver := flag.String("resolver", "", "resolver address where to forward DNS requests")
+	flag.Parse()
+
 	udpAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:2053")
 	if err != nil {
 		fmt.Println("Failed to resolve UDP address:", err)
@@ -19,8 +23,13 @@ func main() {
 	}
 	defer udpConn.Close()
 
-	buf := make([]byte, 512)
+	forwarder, err := NewForwarder(*resolver)
+	if err != nil {
+		fmt.Println("Failed to create forwarder:", err)
+		return
+	}
 
+	buf := make([]byte, 512)
 	for {
 		size, source, err := udpConn.ReadFromUDP(buf)
 		if err != nil {
@@ -31,7 +40,24 @@ func main() {
 		message := ParseMessage(buf[:size])
 		fmt.Printf("request\n%v\n", message)
 
-		// response
+		responses := make([]*Message, 0, message.Headers.QDCOUNT)
+		for _, question := range message.Questions {
+			forwardHeaders := *message.Headers
+			forwardHeaders.QDCOUNT = 1
+			forwardQuestion := *question
+			forwardMessage := &Message{
+				Headers:   &forwardHeaders,
+				Questions: []*Question{&forwardQuestion},
+			}
+			response, err := forwarder.Forward(forwardMessage)
+			if err != nil {
+				fmt.Println("Failed to forward request:", err)
+				continue
+			}
+			responses = append(responses, response)
+
+		}
+
 		headers := NewHeaders(message.Headers.ID)
 		headers.SetQR(true)
 		headers.SetOPCODE(message.Headers.OPCODE())
@@ -44,12 +70,9 @@ func main() {
 
 		questions := message.Questions
 
-		answers := make([]*ResourceRecord, 0, len(questions))
-		for _, question := range questions {
-			resourceRecord := NewResourceRecord(question)
-			resourceRecord.TTL = 60
-			resourceRecord.SetData([]byte{8, 8, 8, 8})
-			answers = append(answers, resourceRecord)
+		answers := make([]*ResourceRecord, 0, len(responses))
+		for _, resp := range responses {
+			answers = append(answers, resp.Answers...)
 		}
 
 		responseMessage := &Message{
