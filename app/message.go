@@ -19,9 +19,9 @@ func ParseMessage(b []byte) *Message {
 	offset := 12
 	questions := make([]*Question, 0, headers.QDCOUNT)
 	for i := uint16(0); i < headers.QDCOUNT; i++ {
-		question, questionOffset := ParseQuestion(b, offset)
+		var question *Question
+		question, offset = ParseQuestion(b, offset)
 		questions = append(questions, question)
-		offset += questionOffset
 	}
 
 	return &Message{

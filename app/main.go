@@ -42,16 +42,20 @@ func main() {
 			headers.SetRCODE(4) // not implemented
 		}
 
-		question := message.Questions[0]
+		questions := message.Questions
 
-		resourceRecord := NewResourceRecord(question)
-		resourceRecord.TTL = 60
-		resourceRecord.SetData([]byte{8, 8, 8, 8})
+		answers := make([]*ResourceRecord, 0, len(questions))
+		for _, question := range questions {
+			resourceRecord := NewResourceRecord(question)
+			resourceRecord.TTL = 60
+			resourceRecord.SetData([]byte{8, 8, 8, 8})
+			answers = append(answers, resourceRecord)
+		}
 
 		responseMessage := &Message{
 			Headers:   headers,
-			Questions: []*Question{question},
-			Answers:   []*ResourceRecord{resourceRecord},
+			Questions: questions,
+			Answers:   answers,
 		}
 		responseMessage.Headers.QDCOUNT = uint16(len(responseMessage.Questions))
 		responseMessage.Headers.ANCOUNT = uint16(len(responseMessage.Answers))
